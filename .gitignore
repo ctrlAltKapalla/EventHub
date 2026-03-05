@@ -1,0 +1,41 @@
+# Node
+node_modules/
+.npm
+*.log
+npm-debug.log*
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+
+# Build
+dist/
+build/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Docker
+*.override.yml
+
+# DB
+*.sqlite
+*.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Prisma
+backend/prisma/migrations/
+
+# Python (if ever needed)
+__pycache__/
+*.pyc
+.venv/

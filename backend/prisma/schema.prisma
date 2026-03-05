@@ -1,0 +1,85 @@
+// EventHub Prisma Schema
+// Basis-Schema — wird in späteren Phasen erweitert
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ────────────────────────────────────────────
+
+enum Role {
+  USER
+  ORGANIZER
+  ADMIN
+}
+
+enum EventType {
+  CONFERENCE
+  WORKSHOP
+  PARTY
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+// ── Models ───────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  events        Event[]
+  registrations Registration[]
+
+  @@map("users")
+}
+
+model Event {
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  type        EventType
+  status      EventStatus @default(DRAFT)
+  startDate   DateTime
+  endDate     DateTime
+  location    String
+  capacity    Int
+  slug        String      @unique
+  organizerId String
+  organizer   User        @relation(fields: [organizerId], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  registrations Registration[]
+
+  @@map("events")
+}
+
+model Registration {
+  id        String   @id @default(uuid())
+  eventId   String
+  userId    String
+  ticketQr  String   @unique @default(uuid())
+  checkedIn Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+  @@map("registrations")
+}
