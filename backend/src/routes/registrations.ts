@@ -261,8 +261,11 @@ export async function registrationRoutes(app: FastifyInstance) {
         data: { checkedIn: true, checkedInAt: new Date() },
       });
 
+      // Top-level checkedIn for E2E contract compatibility
       return reply.send({
         message: "Check-in successful",
+        checkedIn: updated.checkedIn,
+        checkedInAt: updated.checkedInAt,
         registration: {
           id: updated.id,
           checkedIn: updated.checkedIn,
