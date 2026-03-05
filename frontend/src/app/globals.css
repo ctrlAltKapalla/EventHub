@@ -1,1 +1,42 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+@theme {
+  /* Primary */
+  --color-primary-50: #EEF2FF;
+  --color-primary-100: #E0E7FF;
+  --color-primary-600: #4F46E5;
+  --color-primary-700: #4338CA;
+  --color-primary-900: #312E81;
+
+  /* Accent */
+  --color-accent-400: #FB923C;
+  --color-accent-500: #F97316;
+
+  /* Neutral */
+  --color-neutral-50: #F9FAFB;
+  --color-neutral-100: #F3F4F6;
+  --color-neutral-300: #D1D5DB;
+  --color-neutral-600: #4B5563;
+  --color-neutral-900: #111827;
+
+  /* Status */
+  --color-success: #16A34A;
+  --color-warning: #D97706;
+  --color-error: #DC2626;
+  --color-info: #2563EB;
+
+  /* Typography */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+}
+
+html {
+  font-family: var(--font-sans);
+  color: #111827;
+  background-color: #F9FAFB;
+}
+
+* {
+  box-sizing: border-box;
+}
