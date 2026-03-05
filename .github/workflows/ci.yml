@@ -51,7 +51,7 @@ jobs:
         run: npx prisma generate
 
       - name: Run migrations
-        run: npx prisma migrate deploy
+        run: npx prisma db push --skip-generate
 
       - name: Lint
         run: npm run lint || echo "::warning::Lint not configured yet"
