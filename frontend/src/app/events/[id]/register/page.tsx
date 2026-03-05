@@ -12,7 +12,7 @@ import Checkbox from "@/components/ui/Checkbox";
 import { useToast } from "@/components/ui/Toast";
 
 interface Props {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ id: string }>;
 }
 
 type Step = "form" | "confirm" | "success";
@@ -32,8 +32,8 @@ interface FormErrors {
 }
 
 export default function RegisterEventPage({ params }: Props) {
-  const { slug } = use(params);
-  const event = MOCK_EVENTS.find((e) => e.slug === slug);
+  const { id } = use(params);
+  const event = MOCK_EVENTS.find((e) => e.id === id);
   if (!event) notFound();
 
   const [step, setStep] = useState<Step>("form");
@@ -113,7 +113,7 @@ export default function RegisterEventPage({ params }: Props) {
       <nav className="text-sm text-neutral-600 mb-6">
         <Link href="/" className="hover:text-primary-600">Events</Link>
         <span className="mx-2">›</span>
-        <Link href={`/events/${slug}`} className="hover:text-primary-600">{event.title}</Link>
+        <Link href={`/events/${id}`} className="hover:text-primary-600">{event.title}</Link>
         <span className="mx-2">›</span>
         <span className="text-neutral-900">Registrierung</span>
       </nav>

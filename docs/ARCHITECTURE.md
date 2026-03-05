@@ -1,6 +1,6 @@
 # EventHub — Architekturdiagramm
 
-**Version:** 1.0  
+**Version:** 1.1 (Stack-Reconciliation: FastAPI → Fastify)  
 **Stand:** 2026-03-05  
 **Autor:** Peter (Backend Developer)  
 **Projekt:** EventHub MVP — Webplattform für Eventplanung & Ticketverwaltung
@@ -22,9 +22,9 @@
                │                                   │
                ▼                                   ▼
 ┌─────────────────────────────┐      ┌──────────────────────────────────────┐
-│   FRONTEND (Next.js 14)     │      │      BACKEND API (FastAPI)            │
+│   FRONTEND (Next.js 14)     │      │      BACKEND API (Fastify 5)          │
 │                             │      │                                       │
-│  • Public Event Pages       │◄────►│  • REST API (/api/v1/*)              │
+│  • Public Event Pages       │◄────►│  • REST API (/api/*)                 │
 │  • Registration Forms       │ HTTP │  • Auth (JWT + Refresh Token)        │
 │  • Organizer Dashboard      │      │  • Event CRUD                        │
 │  • Admin Panel              │      │  • Registration & Ticketing          │
@@ -77,30 +77,34 @@
 /ticket/[token]         → Ticket-Ansicht (öffentlicher Link)
 ```
 
-### 2.2 Backend — FastAPI (Python 3.12)
+### 2.2 Backend — Fastify 5 (Node.js 22, TypeScript)
 
 | Aspekt | Entscheidung | Begründung |
 |---|---|---|
-| Framework | FastAPI 0.110+ | Native async, automatische OpenAPI-Docs |
-| ORM | SQLAlchemy 2.0 async + Alembic | Type-safe, versionierte Migrations |
-| Validation | Pydantic v2 (strict mode) | Laufzeit-Typsicherheit |
-| Task Queue | Celery + Redis | Async Mail + PDF-Generierung |
-| PDF | WeasyPrint (serverseitig) | CSS-basiertes Template-Rendering |
-| QR | `qrcode` Library | PNG in PDF eingebettet |
-| Testing | pytest + httpx (async) | Full async test stack |
+| Framework | Fastify 5.x (Node.js 22, ESM) | Hochperformant, native async, Plugin-System |
+| ORM | Prisma 6 + @prisma/client | Type-safe, auto-generierter Client, Migrations |
+| Validation | Zod 3 | TypeScript-native Schemas, parse & validate |
+| Auth | @fastify/jwt + @fastify/cookie | JWT Access Token + HTTP-only Refresh Cookie |
+| Task Queue | Nodemailer (Phase 3: Bull/BullMQ) | Async Mail via SMTP (MailHog in Dev) |
+| PDF | (Phase 4) | Puppeteer oder PDFKit |
+| QR | (Phase 4) | `qrcode` npm package |
+| Testing | Vitest 3 + fastify.inject() | In-process integration tests, kein echtes HTTP |
 
 ### 2.3 Datenbank — PostgreSQL 16
 
-- Transaktionale Daten: Users, Events, Registrations, Tickets, CheckIns
-- Migrations: Alembic (versioniert, mit downgrade)
-- Connection Pooling: asyncpg (max 20) + pgBouncer (Produktion)
+- Transaktionale Daten: Users, Events, Registrations, Tickets, CheckIns, RefreshTokens
+- Migrations: Prisma Migrate (versioniert, `prisma/migrations/`)
+- Connection Pooling: Prisma built-in (Connection Limit konfigurierbar), pgBouncer für Produktion
 - Backup: täglich via pg_dump, 7 Tage Retention, S3/Object Storage
 
-### 2.4 Redis
+### 2.4 Redis (Phase 3+)
 
-- **Sessions:** Refresh Token Store (Hash: token → user_id, exp, fingerprint)
+> **MVP-Entscheidung:** Refresh Tokens werden in PostgreSQL gespeichert (Tabelle `refresh_tokens`). Redis ist für Phase 3+ (Rate Limiting, Mail-Queue, Response Caching) geplant, aber für den MVP nicht erforderlich. Docker Compose enthält noch keinen Redis-Service.
+
+Geplante Nutzung ab Phase 3:
+- **Sessions:** Refresh Token Blocklist (bei Logout/Widerruf)
 - **Rate Limiting:** Login-Versuche (5 / 15 Min / IP)
-- **Celery Queue:** Mail- und PDF-Jobs (Async)
+- **Bull/BullMQ Queue:** Mail- und PDF-Jobs (Async)
 - **Response Caching:** Public Event-Liste (TTL: 60s)
 
 ### 2.5 Mail-Service
@@ -156,7 +160,7 @@ Client              Backend                          Redis
 |---|---|
 | Access Token | JWT (HS256), **15 Minuten** TTL |
 | Refresh Token | UUID v4, **30 Tage** TTL |
-| Refresh Storage | Redis (Hash: sha256(token) → user_id, exp, ua_fingerprint) |
+| Refresh Storage | PostgreSQL `refresh_tokens` table (SHA-256 hash, user_id, expiresAt) |
 | Refresh Delivery | HTTP-only Cookie (Secure, SameSite=Strict, Path=/api/v1/auth) |
 | Access Delivery | Response Body (Bearer, nur im Memory — kein localStorage) |
 | Invalidierung | Logout: Refresh Token aus Redis löschen |

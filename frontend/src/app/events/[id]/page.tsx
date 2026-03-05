@@ -7,12 +7,12 @@ import { MOCK_EVENTS } from "@/lib/mockData";
 import Button from "@/components/ui/Button";
 
 interface Props {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ id: string }>;
 }
 
 export default function EventDetailPage({ params }: Props) {
-  const { slug } = use(params);
-  const event = MOCK_EVENTS.find((e) => e.slug === slug);
+  const { id } = use(params);
+  const event = MOCK_EVENTS.find((e) => e.id === id);
   if (!event) notFound();
 
   const spotsLeft = event.capacity - event.registrations;
@@ -132,7 +132,7 @@ export default function EventDetailPage({ params }: Props) {
                 <div className="text-sm text-neutral-600">
                   <p>✅ <strong>{spotsLeft}</strong> Plätze verfügbar</p>
                 </div>
-                <Link href={`/events/${event.slug}/register`} className="block">
+                <Link href={`/events/${event.id}/register`} className="block">
                   <Button className="w-full" size="lg">Jetzt registrieren</Button>
                 </Link>
               </>
