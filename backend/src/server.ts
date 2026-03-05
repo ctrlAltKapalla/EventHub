@@ -2,6 +2,8 @@ import Fastify, { FastifyInstance } from "fastify";
 import prismaPlugin from "./plugins/prisma.js";
 import jwtPlugin from "./plugins/jwt.js";
 import corsPlugin from "./plugins/cors.js";
+import helmetPlugin from "./plugins/helmet.js";
+import rateLimitPlugin from "./plugins/rateLimit.js";
 import authRoutes from "./routes/auth.js";
 import eventsRoutes from "./routes/events.js";
 import { registrationRoutes } from "./routes/registrations.js";
@@ -21,6 +23,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   // ── Plugins ────────────────────────────────────────
+  await app.register(helmetPlugin);
+  await app.register(rateLimitPlugin);
   await app.register(corsPlugin);
   await app.register(prismaPlugin);
   await app.register(jwtPlugin);
