@@ -1,26 +1,13 @@
 /**
  * Global test setup — runs once per worker before any test file.
- * 1. Validates required env vars are present.
- * 2. Syncs the Prisma schema to the test DB (idempotent).
- * 3. Truncates all tables so every npm test run starts from a clean slate.
+ * 1. Syncs Prisma schema to the test DB (idempotent, no shadow DB needed).
+ * 2. Truncates all tables so every `npm test` run starts from a clean slate.
+ *
+ * DATABASE_URL is injected by vitest.config.ts (defaults to mission_control
+ * schema "eventhub_test" — no Docker / no manual setup required).
  */
 import { execSync } from "child_process";
 import { PrismaClient } from "@prisma/client";
-
-// ── Env guards ────────────────────────────────────────
-
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL is not set.\n" +
-      "Create backend/.env.test with:\n" +
-      "  DATABASE_URL=postgresql://mission_control:mission_control@localhost:5432/mission_control?schema=eventhub_test\n" +
-      "  JWT_SECRET=test_secret_at_least_32_chars_long_for_vitest"
-  );
-}
-
-if (!process.env.JWT_SECRET) {
-  throw new Error("JWT_SECRET is not set. Check backend/.env.test.");
-}
 
 // ── Schema sync ───────────────────────────────────────
 
@@ -33,14 +20,14 @@ try {
   console.log("[test-setup] Schema in sync.");
 } catch (err) {
   const msg = err instanceof Error ? err.message : String(err);
-  throw new Error(`[test-setup] prisma db push failed:\n${msg}`);
+  throw new Error(
+    `[test-setup] prisma db push failed. Check DATABASE_URL in vitest.config.ts or .env.test.\n${msg}`
+  );
 }
 
 // ── Full truncate ─────────────────────────────────────
-// Clears all tables so a previous crashed run can't pollute the next one.
 
 const prisma = new PrismaClient();
-
 try {
   await prisma.$transaction([
     prisma.refreshToken.deleteMany(),

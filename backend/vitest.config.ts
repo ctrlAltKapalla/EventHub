@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 
-/** Parse a .env file into key-value pairs (no dependencies needed). */
+/** Parse a .env file into key-value pairs (no extra dependencies). */
 function parseEnvFile(filePath: string): Record<string, string> {
   if (!existsSync(filePath)) return {};
   const env: Record<string, string> = {};
@@ -18,7 +18,19 @@ function parseEnvFile(filePath: string): Record<string, string> {
   return env;
 }
 
-const testEnv = parseEnvFile(resolve(__dirname, ".env.test"));
+// Defaults that work on the project host (native postgres, no Docker needed).
+// Overridden by .env.test if present — override for your local setup.
+const defaults: Record<string, string> = {
+  DATABASE_URL:
+    "postgresql://mission_control:mission_control@localhost:5432/mission_control?schema=eventhub_test",
+  JWT_SECRET: "test_secret_at_least_32_chars_long_for_vitest",
+  NODE_ENV: "test",
+};
+
+const testEnv: Record<string, string> = {
+  ...defaults,
+  ...parseEnvFile(resolve(__dirname, ".env.test")),
+};
 
 export default defineConfig({
   test: {
@@ -35,10 +47,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "html"],
       include: ["src/**/*.ts"],
-      exclude: [
-        "src/**/*.test.ts",
-        "src/__tests__/**",
-      ],
+      exclude: ["src/**/*.test.ts", "src/__tests__/**"],
       thresholds: {
         lines: 80,
         functions: 80,

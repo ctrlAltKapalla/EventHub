@@ -1,7 +1,7 @@
 node_modules/
 dist/
 .env
-.env.test
 .env.local
 coverage/
 *.js.map
+# .env.test is committed intentionally — dev-only credentials, not production
