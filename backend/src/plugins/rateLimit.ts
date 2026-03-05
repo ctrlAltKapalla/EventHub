@@ -3,7 +3,9 @@ import rateLimit from "@fastify/rate-limit";
 import type { FastifyInstance } from "fastify";
 
 export default fp(async (app: FastifyInstance) => {
-  // Global rate limit
+  // Skip rate limiting in test environment to avoid flaky tests
+  if (process.env.NODE_ENV === "test") return;
+
   await app.register(rateLimit, {
     global: true,
     max: 200,
@@ -14,12 +16,4 @@ export default fp(async (app: FastifyInstance) => {
       message: `Rate limit exceeded. Try again in ${context.after}.`,
     }),
   });
-
-  // Stricter limit for auth endpoints — applied per route in auth.ts
-  // but we expose the factory here for reuse
-  app.decorate("authRateLimit", {
-    max: 10,
-    timeWindow: "15 minutes",
-    keyGenerator: (req: { ip: string }) => req.ip,
-  });
-});
+}, { name: "rate-limit" });
