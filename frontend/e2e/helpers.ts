@@ -5,8 +5,8 @@ const API = process.env.API_URL ?? "http://localhost:4000";
 /** Registers a user via API, then logs in and returns the access token + userId. */
 export async function registerAndLogin(
   page: Page,
-  overrides: Partial<{ email: string; name: string; password: string }> = {}
-): Promise<{ token: string; userId: string }> {
+  overrides: Partial<{ email: string; name: string; password: string; role: string }> = {}
+): Promise<{ token: string; userId: string; email: string }> {
   const email = overrides.email ?? `test+${Date.now()}@eventhub.test`;
   const name = overrides.name ?? "Test User";
   const password = overrides.password ?? "Password1!";
@@ -18,6 +18,14 @@ export async function registerAndLogin(
   expect(regRes.status()).toBe(201);
   const user = await regRes.json();
 
+  // Promote role if requested (uses test-only endpoint)
+  if (overrides.role && overrides.role !== "USER") {
+    const promoteRes = await page.request.post(`${API}/api/test/promote`, {
+      data: { email, role: overrides.role },
+    });
+    expect(promoteRes.status()).toBe(200);
+  }
+
   // Login → returns token
   const loginRes = await page.request.post(`${API}/api/auth/login`, {
     data: { email, password },
@@ -25,7 +33,7 @@ export async function registerAndLogin(
   expect(loginRes.status()).toBe(200);
   const tokens = await loginRes.json();
 
-  return { token: tokens.access_token, userId: user.id };
+  return { token: tokens.access_token, userId: user.id, email };
 }
 
 /** Creates an event via API as organizer. Returns event id. */

@@ -12,6 +12,7 @@ test.describe("Event management", () => {
     const result = await registerAndLogin(page, {
       email: `organizer+${Date.now()}@eventhub.test`,
       name: "Test Organizer",
+      role: "ORGANIZER",
     });
     organizerToken = result.token;
     await page.close();

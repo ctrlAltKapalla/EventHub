@@ -17,6 +17,7 @@ test.describe("Registration & Ticket flow", () => {
     const org = await registerAndLogin(page, {
       email: `org+ticket+${ts}@eventhub.test`,
       name: "Ticket Organizer",
+      role: "ORGANIZER",
     });
     organizerToken = org.token;
 

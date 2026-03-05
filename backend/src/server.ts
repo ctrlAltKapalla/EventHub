@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.js";
 import eventsRoutes from "./routes/events.js";
 import { registrationRoutes } from "./routes/registrations.js";
 import { ticketRoutes } from "./routes/tickets.js";
+import { testHelperRoutes } from "./routes/testHelpers.js";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -36,6 +37,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(eventsRoutes, { prefix: "/api/events" });
   await app.register(registrationRoutes);
   await app.register(ticketRoutes);
+  await app.register(testHelperRoutes);
 
   return app;
 }
