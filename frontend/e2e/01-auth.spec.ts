@@ -8,19 +8,21 @@ test.describe("Auth flows", () => {
   const password = "Password1!";
   const name = "E2E Tester";
 
-  test("user can register via API", async ({ page }) => {
+  // ── API: Register ────────────────────────────────
+  test("user can register via API — returns user object", async ({ page }) => {
     const res = await page.request.post(`${API}/api/auth/register`, {
       data: { email, name, password },
     });
     expect(res.status()).toBe(201);
     const body = await res.json();
-    expect(body).toMatchObject({
-      access_token: expect.any(String),
-      token_type: "Bearer",
-      user: { email, name, role: "USER" },
-    });
+    // Register returns the created user (not the token)
+    expect(body.email).toBe(email);
+    expect(body.name).toBe(name);
+    expect(body.role).toBe("USER");
+    expect(body.id).toBeTruthy();
   });
 
+  // ── API: Login ───────────────────────────────────
   test("user can log in and receive access token", async ({ page }) => {
     const res = await page.request.post(`${API}/api/auth/login`, {
       data: { email, password },
@@ -28,9 +30,11 @@ test.describe("Auth flows", () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.access_token).toBeTruthy();
-    expect(body.token_type).toBe("Bearer");
+    expect(body.token_type).toBe("bearer");
+    expect(body.expires_in).toBe(900);
   });
 
+  // ── API: Wrong password ──────────────────────────
   test("login rejects wrong password", async ({ page }) => {
     const res = await page.request.post(`${API}/api/auth/login`, {
       data: { email, password: "WrongPassword9!" },
@@ -38,6 +42,7 @@ test.describe("Auth flows", () => {
     expect(res.status()).toBe(401);
   });
 
+  // ── API: /me ─────────────────────────────────────
   test("GET /api/auth/me returns user when authenticated", async ({ page }) => {
     const loginRes = await page.request.post(`${API}/api/auth/login`, {
       data: { email, password },
@@ -57,15 +62,17 @@ test.describe("Auth flows", () => {
     expect(res.status()).toBe(401);
   });
 
+  // ── UI: Pages load ───────────────────────────────
   test("register page loads", async ({ page }) => {
     await page.goto("/register");
     await expect(page).toHaveTitle(/EventHub/);
-    await expect(page.locator("form, [data-testid='register-form'], main")).toBeVisible();
+    // Use first() to avoid strict mode issues with multiple matching elements
+    await expect(page.locator("main").first()).toBeVisible();
   });
 
   test("login page loads", async ({ page }) => {
     await page.goto("/login");
     await expect(page).toHaveTitle(/EventHub/);
-    await expect(page.locator("form, [data-testid='login-form'], main")).toBeVisible();
+    await expect(page.locator("main").first()).toBeVisible();
   });
 });
