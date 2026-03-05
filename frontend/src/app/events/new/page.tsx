@@ -7,7 +7,17 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
-import { CATEGORIES } from "@/lib/mockData";
+import { api, ApiEventInput } from "@/lib/api";
+
+// Static config — not mock data
+const CATEGORY_OPTIONS = [
+  { value: "Musik", label: "Musik" },
+  { value: "Tech", label: "Tech" },
+  { value: "Sport", label: "Sport" },
+  { value: "Business", label: "Business" },
+  { value: "Kunst", label: "Kunst" },
+  { value: "Food", label: "Food" },
+];
 
 interface EventForm {
   title: string;
@@ -18,7 +28,6 @@ interface EventForm {
   category: string;
   capacity: string;
   price: string;
-  status: "draft" | "live";
 }
 
 interface FormErrors {
@@ -38,7 +47,6 @@ const initialForm: EventForm = {
   category: "Tech",
   capacity: "100",
   price: "0",
-  status: "draft",
 };
 
 export default function NewEventPage() {
@@ -68,7 +76,17 @@ export default function NewEventPage() {
     if (!validate()) return;
     setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 700));
+      const payload: ApiEventInput = {
+        title: form.title,
+        description: form.description,
+        start_at: new Date(`${form.date}T${form.time}`).toISOString(),
+        location: form.location,
+        category: form.category,
+        capacity: Number(form.capacity),
+        price: Number(form.price),
+        status: publish ? "published" : "draft",
+      };
+      await api.post("/api/events", payload);
       const action = publish ? "veröffentlicht" : "als Entwurf gespeichert";
       toast(`Event „${form.title}" ${action}!`, "success");
       router.push("/dashboard");
@@ -78,8 +96,6 @@ export default function NewEventPage() {
       setLoading(false);
     }
   };
-
-  const categoryOptions = CATEGORIES.filter((c) => c !== "Alle").map((c) => ({ value: c, label: c }));
 
   return (
     <ProtectedRoute requiredRoles={["organizer", "admin"]}>
@@ -104,11 +120,10 @@ export default function NewEventPage() {
           </div>
           <Input label="Ort / Adresse" value={form.location} onChange={(e) => set("location", e.target.value)} error={errors.location} placeholder="Tempelhof, Berlin" required />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Select label="Kategorie" value={form.category} onChange={(e) => set("category", e.target.value)} options={categoryOptions} />
+            <Select label="Kategorie" value={form.category} onChange={(e) => set("category", e.target.value)} options={CATEGORY_OPTIONS} />
             <Input label="Kapazität" type="number" min="1" value={form.capacity} onChange={(e) => set("capacity", e.target.value)} error={errors.capacity} required />
             <Input label="Preis (€)" type="number" min="0" step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} hint="0 = kostenlos" />
           </div>
-
           <div className="flex gap-3 pt-2 border-t border-neutral-100">
             <Button type="submit" variant="secondary" loading={loading}>💾 Als Entwurf speichern</Button>
             <Button type="button" loading={loading} onClick={(e) => handleSubmit(e as unknown as FormEvent, true)}>🚀 Veröffentlichen</Button>

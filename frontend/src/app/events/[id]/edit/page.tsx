@@ -1,44 +1,80 @@
 "use client";
 
-import { use, useState, FormEvent } from "react";
+import { use, useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
-import { MOCK_EVENTS, CATEGORIES } from "@/lib/mockData";
+import { useEvent } from "@/lib/hooks/useEvents";
+import { api, ApiEventInput } from "@/lib/api";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
+const CATEGORY_OPTIONS = [
+  { value: "Musik", label: "Musik" },
+  { value: "Tech", label: "Tech" },
+  { value: "Sport", label: "Sport" },
+  { value: "Business", label: "Business" },
+  { value: "Kunst", label: "Kunst" },
+  { value: "Food", label: "Food" },
+];
+
 export default function EditEventPage({ params }: Props) {
   const { id } = use(params);
-  const event = MOCK_EVENTS.find((e) => e.id === id);
+  const { data: event, loading: eventLoading } = useEvent(id);
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
-    title: event?.title ?? "",
-    description: event?.description ?? "",
-    date: event?.date ?? "",
-    time: event?.time ?? "18:00",
-    location: event?.location ?? "",
-    category: event?.category ?? "Tech",
-    capacity: String(event?.capacity ?? 100),
-    price: String(event?.price ?? 0),
+    title: "",
+    description: "",
+    date: "",
+    time: "18:00",
+    location: "",
+    category: "Tech",
+    capacity: "100",
+    price: "0",
   });
+
+  useEffect(() => {
+    if (!event) return;
+    const start = new Date(event.start_at);
+    setForm({
+      title: event.title,
+      description: event.description,
+      date: start.toISOString().slice(0, 10),
+      time: start.toTimeString().slice(0, 5),
+      location: event.location,
+      category: event.category,
+      capacity: String(event.capacity),
+      price: String(event.price),
+    });
+  }, [event]);
 
   const set = (key: keyof typeof form, value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!event) return;
     setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 600));
+      const payload: Partial<ApiEventInput> = {
+        title: form.title,
+        description: form.description,
+        start_at: new Date(`${form.date}T${form.time}`).toISOString(),
+        location: form.location,
+        category: form.category,
+        capacity: Number(form.capacity),
+        price: Number(form.price),
+      };
+      await api.patch(`/api/events/${event.id}`, payload);
       toast("Event aktualisiert!", "success");
       router.push("/dashboard");
     } catch {
@@ -48,7 +84,16 @@ export default function EditEventPage({ params }: Props) {
     }
   };
 
-  const categoryOptions = CATEGORIES.filter((c) => c !== "Alle").map((c) => ({ value: c, label: c }));
+  if (eventLoading) {
+    return (
+      <ProtectedRoute requiredRoles={["organizer", "admin"]}>
+        <div className="max-w-3xl mx-auto px-4 py-10 space-y-4">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-96 rounded-2xl" />
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   if (!event) {
     return (
@@ -81,7 +126,7 @@ export default function EditEventPage({ params }: Props) {
           </div>
           <Input label="Ort / Adresse" value={form.location} onChange={(e) => set("location", e.target.value)} />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Select label="Kategorie" value={form.category} onChange={(e) => set("category", e.target.value)} options={categoryOptions} />
+            <Select label="Kategorie" value={form.category} onChange={(e) => set("category", e.target.value)} options={CATEGORY_OPTIONS} />
             <Input label="Kapazität" type="number" min="1" value={form.capacity} onChange={(e) => set("capacity", e.target.value)} />
             <Input label="Preis (€)" type="number" min="0" step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} />
           </div>

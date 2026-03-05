@@ -4,14 +4,10 @@ import { use, useState } from "react";
 import Link from "next/link";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Button from "@/components/ui/Button";
-import { useAttendees } from "@/lib/hooks/useAttendees";
-import { downloadAttendeeCsv } from "@/lib/hooks/useTicket";
-import { mockRegistrationStore } from "@/lib/mockRegistrations";
-import { MOCK_EVENTS } from "@/lib/mockData";
+import { useAttendees, downloadAttendeeCsvById } from "@/lib/hooks/useAttendees";
+import { useEvent } from "@/lib/hooks/useEvents";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
-
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -35,38 +31,25 @@ function SubNav({ id, active }: { id: string; active: string }) {
 
 export default function AttendeesPage({ params }: Props) {
   const { id } = use(params);
-  const event = MOCK_EVENTS.find((e) => e.id === id);
+  const { data: event } = useEvent(id);
   const [search, setSearch] = useState("");
   const [exporting, setExporting] = useState(false);
   const { toast } = useToast();
 
   const { data: attendees, loading, error } = useAttendees(id, search);
+  const checkedInCount = attendees.filter((r) => r.checked_in).length;
 
   const handleCsvExport = async () => {
     setExporting(true);
     try {
-      if (USE_MOCK) {
-        const regs = mockRegistrationStore.filter((r) => r.eventId === id);
-        const header = "Name,E-Mail,Ticket,Status,Registriert am";
-        const rows = regs.map((r) => [r.name, r.email, r.ticketToken, r.checkedIn ? "Eingecheckt" : "Ausstehend", r.createdAt].join(","));
-        const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = `teilnehmer-${id}.csv`; a.click();
-        URL.revokeObjectURL(url);
-        toast("CSV exportiert.", "success");
-      } else {
-        await downloadAttendeeCsv(id);
-        toast("CSV exportiert.", "success");
-      }
+      await downloadAttendeeCsvById(id);
+      toast("CSV exportiert.", "success");
     } catch {
       toast("Export fehlgeschlagen.", "error");
     } finally {
       setExporting(false);
     }
   };
-
-  const checkedInCount = attendees.filter((r) => r.checked_in).length;
 
   return (
     <ProtectedRoute requiredRoles={["organizer", "admin"]}>
@@ -86,7 +69,7 @@ export default function AttendeesPage({ params }: Props) {
           <Link href={`/events/${id}/checkin`}><Button>📷 Check-in starten</Button></Link>
         </div>
 
-        {!loading && (
+        {!loading && attendees.length > 0 && (
           <div className="flex gap-4 mb-6 flex-wrap text-sm">
             <span className="bg-neutral-100 rounded-full px-3 py-1 text-neutral-700">Gesamt: <strong>{attendees.length}</strong></span>
             <span className="bg-green-100 rounded-full px-3 py-1 text-green-700">Eingecheckt: <strong>{checkedInCount}</strong></span>

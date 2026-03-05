@@ -6,7 +6,7 @@ import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { performCheckin } from "@/lib/hooks/useAttendees";
-import { MOCK_EVENTS } from "@/lib/mockData";
+import { useEvent } from "@/lib/hooks/useEvents";
 import { ApiError } from "@/lib/api";
 
 interface Props {
@@ -40,31 +40,26 @@ function SubNav({ id, active }: { id: string; active: string }) {
 
 export default function CheckInPage({ params }: Props) {
   const { id } = use(params);
-  const event = MOCK_EVENTS.find((e) => e.id === id);
+  const { data: event } = useEvent(id);
   const [manualToken, setManualToken] = useState("");
   const [processing, setProcessing] = useState(false);
   const [scanState, setScanState] = useState<ScanState>({ result: "idle" });
 
   const processToken = async (token: string) => {
+    if (!event) return;
     const trimmed = token.trim().toUpperCase();
     if (!trimmed) return;
     setProcessing(true);
     try {
-      const reg = await performCheckin(id, trimmed);
+      const reg = await performCheckin(event.id, trimmed);
       setScanState({ result: "success", name: reg.name, token: trimmed });
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 409) {
-          setScanState({ result: "already", token: trimmed, message: err.message });
-        } else if (err.status === 404) {
-          setScanState({ result: "invalid", token: trimmed });
-        } else {
-          setScanState({ result: "invalid", token: trimmed, message: err.message });
-        }
-      } else if (err instanceof Error) {
-        setScanState({ result: "invalid", token: trimmed, message: err.message });
+        setScanState({ result: err.status === 409 ? "already" : "invalid", token: trimmed, message: err.message });
+      } else if (err instanceof Error && "status" in err && (err as { status: number }).status === 409) {
+        setScanState({ result: "already", token: trimmed, message: err.message });
       } else {
-        setScanState({ result: "invalid", token: trimmed });
+        setScanState({ result: "invalid", token: trimmed, message: err instanceof Error ? err.message : undefined });
       }
     } finally {
       setProcessing(false);
@@ -93,7 +88,6 @@ export default function CheckInPage({ params }: Props) {
           <SubNav id={id} active="Check-in" />
         </div>
 
-        {/* Camera placeholder */}
         <div className="bg-neutral-900 rounded-2xl aspect-video flex flex-col items-center justify-center mb-6 relative overflow-hidden">
           <div className="text-6xl mb-3">📷</div>
           <p className="text-neutral-400 text-sm">Kamera-Zugriff</p>
@@ -112,14 +106,11 @@ export default function CheckInPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Scan result */}
         {scanState.result !== "idle" && (() => {
           const cfg = resultConfig[scanState.result];
           const message = scanState.result === "success"
             ? `${scanState.name} wurde erfolgreich eingecheckt.`
-            : scanState.result === "already"
-            ? (scanState.message ?? `Dieses Ticket wurde bereits gescannt.`)
-            : (scanState.message ?? `Token „${scanState.token}" konnte nicht gefunden werden.`);
+            : scanState.message ?? (scanState.result === "invalid" ? `Token „${scanState.token}" nicht gefunden.` : "Bereits eingecheckt.");
           return (
             <div className={`rounded-2xl border-2 p-6 mb-6 text-center ${cfg.bg}`}>
               <div className="text-4xl mb-2">{cfg.icon}</div>
@@ -130,13 +121,12 @@ export default function CheckInPage({ params }: Props) {
           );
         })()}
 
-        {/* Manual input */}
         <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6">
           <h2 className="text-sm font-semibold text-neutral-900 mb-1">Manuelle Eingabe</h2>
           <p className="text-xs text-neutral-500 mb-4">Ticket-Nummer manuell eingeben, falls Kamera nicht verfügbar.</p>
           <form onSubmit={handleManualSubmit} className="flex gap-2">
             <Input value={manualToken} onChange={(e) => setManualToken(e.target.value)} placeholder="TICKET-XXXXXXXX" className="font-mono flex-1" />
-            <Button type="submit" loading={processing} disabled={!manualToken.trim()}>✓</Button>
+            <Button type="submit" loading={processing} disabled={!manualToken.trim() || !event}>✓</Button>
           </form>
           <p className="text-xs text-neutral-400 mt-3">Demo: TICKET-DEMO-001 (eingecheckt), TICKET-DEMO-002 (offen)</p>
         </div>
