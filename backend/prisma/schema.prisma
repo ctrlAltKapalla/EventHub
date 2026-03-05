@@ -1,5 +1,4 @@
-// EventHub Prisma Schema
-// Basis-Schema — wird in späteren Phasen erweitert
+// EventHub Prisma Schema v3 — Auth + Event CRUD + Registration + Ticketing + Check-in
 
 generator client {
   provider = "prisma-client-js"
@@ -29,6 +28,12 @@ enum EventStatus {
   PUBLISHED
   CANCELLED
   COMPLETED
+  LOCKED
+}
+
+enum RegistrationStatus {
+  CONFIRMED
+  CANCELLED
 }
 
 // ── Models ───────────────────────────────────────────
@@ -39,13 +44,29 @@ model User {
   passwordHash String
   name         String
   role         Role     @default(USER)
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  events        Event[]
-  registrations Registration[]
+  events         Event[]
+  registrations  Registration[]
+  refreshTokens  RefreshToken[]
 
   @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique   // SHA-256 of the actual token (never stored in plaintext)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
 model Event {
@@ -66,20 +87,34 @@ model Event {
 
   registrations Registration[]
 
+  @@index([status])
+  @@index([type])
+  @@index([startDate])
+  @@index([organizerId])
   @@map("events")
 }
 
 model Registration {
-  id        String   @id @default(uuid())
-  eventId   String
-  userId    String
-  ticketQr  String   @unique @default(uuid())
-  checkedIn Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id          String             @id @default(uuid())
+  eventId     String
+  // Logged-in registrations: userId set, guestEmail/guestName null
+  // Guest registrations: userId null, guestEmail + guestName set
+  userId      String?
+  guestEmail  String?
+  guestName   String?
+  ticketToken String             @unique @default(uuid()) // public token — QR payload
+  status      RegistrationStatus @default(CONFIRMED)
+  checkedIn   Boolean            @default(false)
+  checkedInAt DateTime?
+  createdAt   DateTime           @default(now())
 
-  event Event @relation(fields: [eventId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
+  event Event  @relation(fields: [eventId], references: [id])
+  user  User?  @relation(fields: [userId], references: [id])
 
+  // Postgres NULL != NULL in unique index → allows multiple guests, deduplicates logged-in users and same-email guests
   @@unique([eventId, userId])
+  @@unique([eventId, guestEmail])
+  @@index([eventId])
+  @@index([ticketToken])
   @@map("registrations")
 }
